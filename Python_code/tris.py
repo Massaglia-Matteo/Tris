@@ -1,9 +1,14 @@
 import random
  
-ROSSO = "\033[31m"
-BLU = "\033[34m"
-EVIDENZIA = "\033[1;30;43m"
 RESET = "\033[0m"
+GRIGIO = "\033[90m"
+ROSSO = "\033[1;31m"
+BLU = "\033[1;34m"
+CIANO = "\033[1;36m"
+VERDE = "\033[1;32m"
+GIALLO = "\033[1;33m"
+SFONDO_ULTIMA = "\033[30;43m"
+SFONDO_VITTORIA = "\033[30;42m"
  
 COMBINAZIONI = (
     (0, 1, 2), (3, 4, 5), (6, 7, 8),
@@ -11,34 +16,54 @@ COMBINAZIONI = (
     (0, 4, 8), (2, 4, 6),
 )
  
-board = [" ", " ", " ", " ", " ", " ", " ", " ", " "]
+ 
+def pulisci():
+    print("\033[2J\033[H", end="")
  
  
-def mappa(board, ultima=None):
-    da_mostrare = []
+def cella(board, i, ultima, vincente):
+    if board[i] == " ":
+        return GRIGIO + f" {i} " + RESET
  
-    for i in range(len(board)):
-        if board[i] == " ":
-            da_mostrare.append(str(i))
-        else:
-            if i == ultima:
-                colore = EVIDENZIA
-            elif board[i] == "X":
-                colore = ROSSO
-            else:
-                colore = BLU
-            da_mostrare.append(colore + board[i] + RESET)
+    if board[i] == "X":
+        colore = ROSSO
+    else:
+        colore = BLU
  
-    print(f"\n {da_mostrare[0]} | {da_mostrare[1]} | {da_mostrare[2]} \n"
-          "---+---+---\n"
-          f" {da_mostrare[3]} | {da_mostrare[4]} | {da_mostrare[5]} \n"
-          "---+---+---\n"
-          f" {da_mostrare[6]} | {da_mostrare[7]} | {da_mostrare[8]} ")
+    if i in vincente:
+        colore = SFONDO_VITTORIA
+    elif i == ultima:
+        colore = SFONDO_ULTIMA
+ 
+    return colore + f" {board[i]} " + RESET
+ 
+ 
+def schermata(board, messaggio="", ultima=None, vincente=()):
+    c = [cella(board, i, ultima, vincente) for i in range(9)]
+ 
+    pulisci()
+    print()
+    print(CIANO + "  ╔═══════════════╗" + RESET)
+    print(CIANO + "  ║" + RESET + "   T R I S     " + CIANO + "║" + RESET)
+    print(CIANO + "  ╚═══════════════╝" + RESET)
+    print(f"   Tu: {ROSSO}X{RESET}      PC: {BLU}O{RESET}")
+    print()
+    print("     ┌───┬───┬───┐")
+    print(f"     │{c[0]}│{c[1]}│{c[2]}│")
+    print("     ├───┼───┼───┤")
+    print(f"     │{c[3]}│{c[4]}│{c[5]}│")
+    print("     ├───┼───┼───┤")
+    print(f"     │{c[6]}│{c[7]}│{c[8]}│")
+    print("     └───┴───┴───┘")
+    print()
+    if messaggio:
+        print("  " + messaggio)
+        print()
  
  
 def mossa_umana(board, simbolo):
     while True:
-        n = input(f"Inserire la {simbolo}: ")
+        n = input(f"  Scegli una cella per la {simbolo} (0-8): ")
  
         if n.isdigit():
             n = int(n)
@@ -48,11 +73,11 @@ def mossa_umana(board, simbolo):
                     board[n] = simbolo
                     return n
                 else:
-                    print("Lo spazio e gia occupato")
+                    print(f"  {GIALLO}Cella gia occupata{RESET}")
             else:
-                print("Numero fuori intervallo (da 0 a 8)")
+                print(f"  {GIALLO}Numero fuori intervallo (da 0 a 8){RESET}")
         else:
-            print("NN e un numero")
+            print(f"  {GIALLO}Inserisci un numero{RESET}")
  
  
 def vincitore(board):
@@ -60,6 +85,13 @@ def vincitore(board):
         if board[i[0]] == board[i[1]] and board[i[1]] == board[i[2]] and board[i[0]] != " ":
             return board[i[0]]
     return None
+ 
+ 
+def combinazione_vincente(board):
+    for i in COMBINAZIONI:
+        if board[i[0]] == board[i[1]] and board[i[1]] == board[i[2]] and board[i[0]] != " ":
+            return i
+    return ()
  
  
 def controlla_pareggio(board):
@@ -122,30 +154,48 @@ def mossa_minimax(board, simbolo):
     return scelta
  
  
-turno = random.choice(["X", "O"])
-print("Inizia:", turno)
-ultima = None
+def partita():
+    board = [" "] * 9
+    turno = random.choice(["X", "O"])
+    ultima = None
+ 
+    if turno == "X":
+        messaggio = f"{VERDE}Inizi tu!{RESET}"
+    else:
+        messaggio = f"{BLU}Inizia il PC...{RESET}"
+ 
+    while True:
+ 
+        if turno == "X":
+            schermata(board, messaggio, ultima)
+            ultima = mossa_umana(board, turno)
+            messaggio = ""
+        else:
+            ultima = mossa_minimax(board, turno)
+            messaggio = f"Il PC ha giocato in {BLU}{ultima}{RESET}"
+ 
+        v = vincitore(board)
+        if v:
+            if v == "X":
+                esito = f"{VERDE}Hai vinto!{RESET}"
+            else:
+                esito = f"{BLU}Ha vinto il PC{RESET}"
+            schermata(board, esito, ultima, combinazione_vincente(board))
+            return
+ 
+        if controlla_pareggio(board):
+            schermata(board, f"{GIALLO}Pareggio{RESET}", ultima)
+            return
+ 
+        if turno == "X":
+            turno = "O"
+        else:
+            turno = "X"
+ 
  
 while True:
- 
-    if turno == "X":
-        mappa(board, ultima)
-        ultima = mossa_umana(board, turno)
-    else:
-        ultima = mossa_minimax(board, turno)
- 
-    v = vincitore(board)
-    if v:
-        mappa(board, ultima)
-        print(f"Ha vinto {v}")
+    partita()
+    risposta = input("  Giocare ancora? (s/n): ").strip().lower()
+    if risposta != "s":
         break
  
-    if controlla_pareggio(board):
-        mappa(board, ultima)
-        print("Pareggio")
-        break
- 
-    if turno == "X":
-        turno = "O"
-    else:
-        turno = "X"
